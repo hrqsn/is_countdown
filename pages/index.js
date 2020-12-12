@@ -19,7 +19,6 @@ export default function Home () {
   const [isEnded, setIsEnded] = useState(false)
 
   useEffect(() => {
-    console.log('useEffect', player.current)
     if (player.current) {
       console.log(player)
       player.current.src = '/sound/is_countdown.mp3'
@@ -163,7 +162,7 @@ export default function Home () {
           )}
         </div>
       </main>
-      <audio controls className='audio-element' ref={player} onEnded={() => setIsEnded(true)} />
+      <audio className='audio-element' ref={player} onEnded={() => setIsEnded(true)} />
     </>
   )
 }
