@@ -5,8 +5,8 @@ import day from 'dayjs'
 export default function Home () {
   const player = useRef()
   const playerSilent = useRef()
-  const startTime = day('2020-12-14 18:35:00')
-  const endTime = day('2020-12-14 18:38:00')
+  const startTime = day('2020-12-14 19:00:00')
+  const endTime = startTime.add(37, 'minutes').add(48, 'seconds')
   const nextTiming = () => 1000 - day() % 1000
 
   const [state, setState] = useState({
@@ -91,18 +91,15 @@ export default function Home () {
         playSong(day().diff(startTime, 's'))
       }, delay)
     }
-    console.log('allowed')
-  }, [allowPlaySound])
+  }, [allowPlaySound, isCountEnabled, isEnded, playSong, startTime])
 
   const playSilent = () => {
-    if (isCountEnabled) {
-      playerSilent.current.play()
-        .then(() => {
-          console.log('play silent')
-        }).catch((e) => {
-          console.error(e.name)
-        })
-    }
+    playerSilent.current.play()
+      .then(() => {
+        console.log('play silent')
+      }).catch((e) => {
+        console.error(e.name)
+      })
   }
 
   const Description = () => {
