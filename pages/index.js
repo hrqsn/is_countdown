@@ -1,11 +1,12 @@
 import Head from 'next/head'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import day from 'dayjs'
 
 export default function Home () {
   const player = useRef()
-  const startTime = day('2020-12-12 23:00:00')
-  const endTime = day('2020-12-12 23:38:00')
+  const playerSilent = useRef()
+  const startTime = day('2020-12-14 18:35:00')
+  const endTime = day('2020-12-14 18:38:00')
   const nextTiming = () => 1000 - day() % 1000
 
   const [state, setState] = useState({
@@ -18,42 +19,19 @@ export default function Home () {
   const [allowPlaySound, setAllowPlay] = useState(false)
   const [isEnded, setIsEnded] = useState(false)
 
-  useEffect(() => {
-    if (player.current) {
-      console.log(player)
-      player.current.src = '/sound/is_countdown.mp3'
-      player.current.load()
-    }
-  }, [player])
+  const playSong = useCallback((currentTime = 0) => {
+    if (isEnded || !allowPlaySound) return
+    player.current.currentTime = currentTime
+    player.current.play()
+      .then(() => {
+        console.log('play')
+        console.log(player.current.muted)
+      }).catch((e) => {
+        console.error(e.name)
+      })
+  }, [isEnded, allowPlaySound])
 
-  useEffect(() => {
-    if (initCount()) {
-      let timer = setTimeout(() => {
-        timer = setTimeout(() => nextTiming())
-        setNewTime()
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [state])
-
-  useEffect(() => {
-    console.log('allowed')
-  }, [allowPlaySound])
-
-  useEffect(() => {
-    if (day().isAfter(endTime)) { setIsEnded(true); setCountEnabled(false) }
-    console.log('ended')
-  }, [isEnded])
-
-  const initCount = () => {
-    if (!isCountEnabled || isEnded) {
-      return false
-    } else {
-      return true
-    }
-  }
-
-  const setNewTime = () => {
+  const setNewTime = useCallback(() => {
     const diff = day(startTime).diff(day())
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -67,23 +45,44 @@ export default function Home () {
       playSong()
     } else {
       setState({ days, hours, minutes, seconds })
+      setCountEnabled(true)
     }
-  }
+  }, [playSong, startTime])
 
-  const playSong = (currentTime = 0) => {
-    if (isEnded) return
-    player.current.currentTime = currentTime
-    player.current.play()
-      .then(() => {
-        console.log('play')
-        console.log(player.current.paused)
-      }).catch((e) => {
-        console.error(e.name)
-      })
-  }
+  useEffect(() => {
+    if (player.current) {
+      player.current.src = '/sound/is_countdown.mp3'
+      player.current.load()
+    }
+  }, [player])
 
-  const allowPlay = () => {
-    setAllowPlay(true)
+  useEffect(() => {
+    if (playerSilent.current) {
+      playerSilent.current.src = '/sound/no_sound.mp3'
+      playerSilent.current.load()
+    }
+  }, [playerSilent])
+
+  useEffect(() => {
+    if (isCountEnabled && !isEnded) {
+      let timer = setTimeout(() => {
+        timer = setTimeout(() => nextTiming())
+        setNewTime()
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [state, isCountEnabled, isEnded, setNewTime])
+
+  useEffect(() => {
+    if (day().isAfter(endTime)) {
+      setIsEnded(true)
+      setCountEnabled(false)
+    } else {
+      setIsEnded(false)
+    }
+  }, [endTime])
+
+  useEffect(() => {
     if (!isCountEnabled && !isEnded) {
       const ms = day().diff(startTime)
       const delay = 1000 - ms % 1000
@@ -91,6 +90,18 @@ export default function Home () {
       setTimeout(() => {
         playSong(day().diff(startTime, 's'))
       }, delay)
+    }
+    console.log('allowed')
+  }, [allowPlaySound])
+
+  const playSilent = () => {
+    if (isCountEnabled) {
+      playerSilent.current.play()
+        .then(() => {
+          console.log('play silent')
+        }).catch((e) => {
+          console.error(e.name)
+        })
     }
   }
 
@@ -106,7 +117,7 @@ export default function Home () {
         {!isEnded && !allowPlaySound && (
           <>
             <p className='mt-6 text-gray-600'>ショーの公演中に音楽を再生するには許可が必要です。</p>
-            <button onClick={() => allowPlay()} className='mt-8 inline-flex items-center text-center px-4 py-2 border border-transparent rounded-md shadow-sm text font-medium text-white bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600'>音楽の再生を許可する</button>
+            <button onClick={() => { playSilent(); setAllowPlay(true) }} className='mt-8 inline-flex items-center text-center px-4 py-2 border border-transparent rounded-md shadow-sm text font-medium text-white bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600'>音楽の再生を許可する</button>
           </>
         )}
       </>
@@ -162,6 +173,7 @@ export default function Home () {
           )}
         </div>
       </main>
+      <audio className='audio-element' ref={playerSilent} />
       <audio className='audio-element' ref={player} onEnded={() => setIsEnded(true)} />
     </>
   )
